@@ -3,7 +3,7 @@ import './App.css';
 import NavBar from './component/NavBar';
 import SearchBar from './component/SearchBar';
 import Pokedex from './component/Pokedex';
-import { getPokemonData, getPokemons } from './api';
+import { getPokemonData, getPokemons, searchPokemon } from './api';
 import { FavoriteProvider } from './contexts/favoritesContext';
 
 const favoritesKey = 'f'
@@ -15,11 +15,13 @@ function App() {
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [favorites, setFavorites] = useState([]);
+  const [notFound, setNotFound] = useState(false);
 
   const itensPerPage = 27;
   const fetchPokemons = async () => {
     try {
       setLoading(true);
+      setNotFound(false);
       const data = await getPokemons(itensPerPage, itensPerPage * page);
       const promises = data.results.map(async (pokemon) => {
         return await getPokemonData(pokemon.url);
@@ -59,6 +61,25 @@ function App() {
     setFavorites(updatedFavorites);
   }
 
+  const onSearchHandler = async (pokemon) => {
+    if(!pokemon) {
+      return fetchPokemons();
+    }
+
+    setLoading(true)
+    setNotFound(false)
+    const result = await searchPokemon(pokemon)
+    if(!result) {
+      setLoading(false)
+      setNotFound(true)
+    } else {
+      setPokemons([result])
+      setPage(0)
+      setTotalPages(1)
+    }
+    setLoading(false)
+  }
+
   return (
     <FavoriteProvider
       value={{ favoritePokemons: favorites, 
@@ -66,14 +87,19 @@ function App() {
     >
       <div>
         <NavBar />
-        <SearchBar />
-        <Pokedex
+        <SearchBar 
+        onSearchHandler={onSearchHandler}
+        />
+        {notFound ? (
+          <div className='not-found-text'>Meteu essa?</div>
+        ) : 
+        (<Pokedex 
           pokemons={pokemons}
           loading={loading}
           page={page}
-          totalPages={totalPages}
           setPage={setPage}
-        />
+          totalPages={totalPages}
+          />)}
       </div>
     </FavoriteProvider>
   );
